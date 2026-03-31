@@ -15,6 +15,7 @@ def save(data):
 
 db = load()
 
+# ✅ FIX (ये missing था)
 @app.route("/")
 def home():
     return "API RUNNING"
