@@ -7,7 +7,7 @@ CORS(app)
 
 DB_FILE = "db.json"
 
-===== LOAD / SAVE =====
+##===== LOAD / SAVE =====#
 
 def load():
 if not os.path.exists(DB_FILE):
@@ -22,19 +22,15 @@ json.dump(data, open(DB_FILE,"w"), indent=2)
 
 db = load()
 
-===== HOME =====
 
 @app.route("/")
 def home():
 return "API RUNNING"
 
-===== GET USER =====
 
 @app.route("/user/<uid>")
 def get_user(uid):
 return jsonify(db.get(uid, {}))
-
-===== UPDATE FROM BOT =====
 
 @app.route("/update", methods=["POST"])
 def update():
@@ -51,7 +47,6 @@ save(db)
 
 return jsonify({"status":"ok"})
 
-===== ORDER SYSTEM =====
 
 @app.route("/order", methods=["POST"])
 def order():
@@ -67,7 +62,6 @@ if uid not in db:
 
 u = db[uid]
 
-# ===== SERVICE PRICE =====
 PRICE = {
     "tg_members": 120,
     "tg_react": 80,
@@ -83,11 +77,11 @@ cost = int(qty * price_per_1000 / 1000)
 if u.get("credits",0) < cost:
     return jsonify({"message":"Not enough coins"})
 
-# ===== DEDUCT =====
+
 u["credits"] -= cost
 u["orders"] = u.get("orders",0) + 1
 
-# ===== ORDER SAVE =====
+
 u.setdefault("order_history", []).append({
     "service": service,
     "link": link,
@@ -96,7 +90,6 @@ u.setdefault("order_history", []).append({
     "time": int(time.time())
 })
 
-# ===== TRANSACTION SAVE =====
 u.setdefault("transactions", []).append({
     "type": "DEBIT",
     "amount": cost,
