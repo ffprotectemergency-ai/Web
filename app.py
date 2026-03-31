@@ -1,43 +1,115 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-import json
+import json, os, time
 
-app = Flask(__name__)
+app = Flask(name)
 CORS(app)
 
 DB_FILE = "db.json"
 
+===== LOAD / SAVE =====
+
 def load():
-    if not os.path.exists(DB_FILE):
-        return {}
-    return json.load(open(DB_FILE))
+if not os.path.exists(DB_FILE):
+return {}
+try:
+return json.load(open(DB_FILE))
+except:
+return {}
 
 def save(data):
-    json.dump(data, open(DB_FILE,"w"))
+json.dump(data, open(DB_FILE,"w"), indent=2)
 
 db = load()
 
-# ✅ FIX (ये missing था)
+===== HOME =====
+
 @app.route("/")
 def home():
-    return "API RUNNING"
+return "API RUNNING"
+
+===== GET USER =====
 
 @app.route("/user/<uid>")
 def get_user(uid):
-    return jsonify(db.get(uid, {}))
+return jsonify(db.get(uid, {}))
+
+===== UPDATE FROM BOT =====
 
 @app.route("/update", methods=["POST"])
 def update():
-    data = request.json
-    uid = str(data["uid"])
+data = request.json
 
-    if uid not in db:
-        db[uid] = {}
+uid = str(data.get("uid"))
+user_data = data.get("data")
 
-    db[uid].update(data["data"])
-    save(db)
+if not uid or not user_data:
+    return jsonify({"status":"error"})
 
-    return {"ok": True}
+db[uid] = user_data
+save(db)
 
-app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)))
+return jsonify({"status":"ok"})
+
+===== ORDER SYSTEM =====
+
+@app.route("/order", methods=["POST"])
+def order():
+data = request.json
+
+uid = str(data.get("uid"))
+service = data.get("service")
+link = data.get("link")
+qty = int(data.get("quantity"))
+
+if uid not in db:
+    return jsonify({"message":"User not found"})
+
+u = db[uid]
+
+# ===== SERVICE PRICE =====
+PRICE = {
+    "tg_members": 120,
+    "tg_react": 80,
+    "tg_views": 50,
+    "ig_follow": 150,
+    "ig_like": 60,
+    "ig_views": 40
+}
+
+price_per_1000 = PRICE.get(service, 100)
+cost = int(qty * price_per_1000 / 1000)
+
+if u.get("credits",0) < cost:
+    return jsonify({"message":"Not enough coins"})
+
+# ===== DEDUCT =====
+u["credits"] -= cost
+u["orders"] = u.get("orders",0) + 1
+
+# ===== ORDER SAVE =====
+u.setdefault("order_history", []).append({
+    "service": service,
+    "link": link,
+    "quantity": qty,
+    "status": "Processing",
+    "time": int(time.time())
+})
+
+# ===== TRANSACTION SAVE =====
+u.setdefault("transactions", []).append({
+    "type": "DEBIT",
+    "amount": cost,
+    "currency": "Credits",
+    "note": f"{service} order",
+    "time": int(time.time())
+})
+
+save(db)
+
+return jsonify({"message":f"Order placed (-{cost} coins)"})
+
+===== RUN =====
+
+if name == "main":
+app.run(host="0.0.0.0", port=5000)
